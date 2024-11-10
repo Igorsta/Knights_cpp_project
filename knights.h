@@ -1,11 +1,12 @@
 #ifndef KNIGHTS_H
 #define KNIGHTS_H
 
+#include <algorithm>
 #include <iostream>
-#include <vector>
-#include <stack>
 #include <list>
 #include <limits>
+#include <compare>
+
 class Knight {
 public:
     using order = std::strong_ordering;
@@ -35,8 +36,8 @@ public:
     Knight& operator+=(Knight& other) {
         _gold = safe_add(_gold, set_to_0(other._gold));
 
-        compare(_weapon_class, other._weapon_class);
-        compare(_armour_class, other._armour_class);
+        get_if_better(_weapon_class, other._weapon_class);
+        get_if_better(_armour_class, other._armour_class);
 
         return *this;
     }
@@ -49,7 +50,7 @@ public:
         );
     }
     
-    order operator<=>(const Knight& other) const {\
+    auto operator<=>(const Knight& other) const {\
         bool this_beats_other = (_weapon_class > other._armour_class) && (_armour_class >= other._weapon_class);
         bool other_beats_this = (other._weapon_class > _armour_class) && (other._armour_class >= _weapon_class);
 
@@ -87,7 +88,7 @@ private:
         return a + std::min(b, MAX_GOLD - a);
     }
 
-    constexpr inline void compare(size_t& mine, size_t& other) {
+    constexpr inline void get_if_better(size_t& mine, size_t& other) {
         if (mine < other)
             mine = set_to_0(other);
     }
@@ -103,40 +104,94 @@ private:
     size_t _armour_class;
 };
 
-constexpr const Knight TRAINEE_KNIGHT = Knight(0, 0, 1);
+constexpr Knight TRAINEE_KNIGHT = Knight(0, 0, 1);
 
 class Tournament {
 public:
-    Tournament(const std::vector<Knight>& contestants) : 
-        _contestants(contestants.empty() ? (std::vector<Knight>){TRAINEE_KNIGHT} : contestants), 
-        _eliminated((std::vector<Knight>){}) {};
+    using order = std::strong_ordering;
+
+    Tournament(const std::list<Knight>& contestants) : 
+        _contestants(contestants.empty() ? (std::list<Knight>){TRAINEE_KNIGHT} : contestants), 
+        _eliminated((std::list<Knight>){}) {};
     
     Tournament(const Tournament& other) : 
         _contestants(other._contestants),
-        _eliminated () {};
+        _eliminated((std::list<Knight>){}) {};
+    
     Tournament(Tournament&&) noexcept = default;
     Tournament& operator=(const Tournament&) = default;
     Tournament& operator=(Tournament&&) noexcept = default;
 
-
     void operator-=(const Knight& knight) {
-
+        auto filter = [knight](const Knight& k) {
+            return  k.get_gold() == knight.get_gold() &&
+                    k.get_armour_class() == knight.get_armour_class() &&
+                    k.get_weapon_class() == knight.get_weapon_class();
+        };
+        
+        _contestants.erase(
+            std::remove_if(_contestants.begin(), _contestants.end(), filter),
+            _contestants.end()
+        );
     }
 
-    std::vector<Knight>::const_iterator play();
+    std::list<Knight>::const_iterator play() {
+        while (_contestants.size() > 2) {
+            Knight first = get_front();
+            Knight second = get_front();
+            
+            auto comparison = first <=> second;
+
+            if(comparison != order::equal)
+                reward(first, second, comparison);
+
+            judge(second, order::less, comparison);
+            judge(first, order::greater, comparison);
+        }
+        
+        return (_contestants.empty() ? _contestants.end() : _contestants.begin());
+    }
     
     void operator+=(const Knight& knight) { _contestants.push_back(knight); }
-    std::vector<Knight>::const_iterator no_winner() const noexcept{ return _contestants.end(); }
+    std::list<Knight>::const_iterator no_winner() const noexcept{ return _contestants.end(); }
 
     size_t size() const noexcept{ return _contestants.size(); }
 
-    friend std::ostream& operator<<(std::ostream& os, const Knight& Tournament) {
+    friend std::ostream& operator<<(std::ostream& os, const Tournament& t) {
+        for (Knight k : t._contestants)
+            os << "+ " << k << std::endl;
+
+        for (Knight k : t._eliminated)
+            os << "+ " << k << std::endl;
+
+        os << "=" << std::endl;
+
         return os;
     }
 
 private:
-    std::vector<Knight> _contestants;
-    std::vector<Knight> _eliminated;
+    std::list<Knight> _contestants;
+    std::list<Knight> _eliminated;
+    
+    Knight&& get_front(){
+        Knight ans = _contestants.front();
+        _contestants.pop_front();
+        return std::move(ans);
+    }
+
+    void reward(Knight& first, Knight& second, const order& res){
+        if(res == order::greater)
+            first += second;
+        else
+            second += first;
+    }
+
+    void judge(const Knight& knight, const order& desired, const order& verdict){
+        if (verdict == desired)
+            _contestants.push_back(knight);
+        else
+            _eliminated.push_back(knight);
+    }
 };
 
 consteval std::pair<size_t, size_t> max_diff_classes(const std::initializer_list<Knight>& knights) {
