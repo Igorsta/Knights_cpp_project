@@ -2,51 +2,82 @@
 #define KNIGHTS_H
 
 #include <iostream>
+#include <vector>
+#include <stack>
 #include <list>
-#include <utility>
 #include <limits>
-#include <compare>
-
 class Knight {
 public:
+    using order = std::strong_ordering;
     static constexpr size_t MAX_GOLD = std::numeric_limits<size_t>::max();
 
-    constexpr Knight(size_t gold, size_t weapon_class, size_t armour_class) : 
-        _gold(gold), _weapon_class(weapon_class), _armour_class(armour_class) {};
+    constexpr Knight(size_t gold, size_t weapon_class, size_t armor_class) :
+        _gold(gold), _weapon_class(weapon_class), _armour_class(armor_class) {};
     
-    Knight() = delete;
+    ~Knight() = default;
     Knight(const Knight&) = default;
     Knight(Knight&&) noexcept = default;
-    ~Knight() = default;
-
     Knight& operator=(const Knight&) = default;
     Knight& operator=(Knight&&) noexcept = default;
-
-    // accessors
-    inline constexpr size_t get_gold() const noexcept { return _gold; }
-    inline constexpr size_t get_weapon_class() const noexcept { return _weapon_class; }
-    inline constexpr size_t get_armour_class() const noexcept { return _armour_class; }
-
-    // mutators
-    inline constexpr void take_gold(const size_t amount) noexcept { _gold = safe_add(_gold, amount); }
-    inline constexpr void change_weapon(size_t new_class) noexcept { _weapon_class = new_class; }    
-    inline constexpr void change_armour(size_t new_class) noexcept { _armour_class = new_class; }
 
     inline constexpr size_t take_gold() noexcept { return set_to_0(_gold); }
     inline constexpr size_t give_up_weapon() noexcept { return set_to_0(_weapon_class); }
     inline constexpr size_t take_off_armour() noexcept { return set_to_0(_armour_class); }
+    
+    inline constexpr size_t get_gold() const noexcept { return _gold; }
+    inline constexpr size_t get_weapon_class() const noexcept { return _weapon_class; }
+    inline constexpr size_t get_armour_class() const noexcept { return _armour_class; }
 
-    // operators
-    Knight& operator+=(Knight& other);
-    constexpr Knight operator+(const Knight& other) const;
-    constexpr std::strong_ordering operator<=>(const Knight& other) const;
-    constexpr bool operator==(const Knight& other) const;
+    inline constexpr void take_gold(const size_t amount) noexcept { _gold = safe_add(_gold, amount); }
+    inline constexpr void change_weapon(size_t new_class) noexcept { _weapon_class = new_class; }    
+    inline constexpr void change_armour(size_t new_class) noexcept { _armour_class = new_class; }
 
+    Knight& operator+=(Knight& other) {
+        _gold = safe_add(_gold, set_to_0(other._gold));
+
+        compare(_weapon_class, other._weapon_class);
+        compare(_armour_class, other._armour_class);
+
+        return *this;
+    }
+
+    constexpr Knight operator+(const Knight& other) const {
+        return Knight(
+            safe_add(_gold, other._gold),
+            std::max(_weapon_class, other._weapon_class),
+            std::max(_armour_class, other._armour_class)
+        );
+    }
+    
+    order operator<=>(const Knight& other) const {\
+        bool this_beats_other = (_weapon_class > other._armour_class) && (_armour_class >= other._weapon_class);
+        bool other_beats_this = (other._weapon_class > _armour_class) && (other._armour_class >= _weapon_class);
+
+        if (this_beats_other && !other_beats_this)
+            return order::greater;
+        
+        if (other_beats_this && !this_beats_other)
+            return order::less;
+        
+        if (_armour_class != other._armour_class)
+            return  _armour_class < other._armour_class ? 
+                    order::less :
+                    order::greater;
+        
+        return  _weapon_class < other._weapon_class ? order::less :
+                _weapon_class > other._weapon_class ? order::greater :
+                order::equal;
+    }
+    
+    constexpr bool operator==(const Knight& other) const {
+        return (_weapon_class <= other._armour_class && other._weapon_class <= _armour_class) ||
+                (_weapon_class == other._weapon_class && _armour_class == other._weapon_class);
+    };
 
     friend std::ostream& operator<<(std::ostream& os, const Knight& knight) {
-        os << "(" << knight.get_gold() <<
-            ", " << knight.get_weapon_class() <<
-            ", " << knight.get_armour_class() <<
+        os << "(" << knight._gold <<
+            ", " << knight._weapon_class <<
+            ", " << knight._armour_class <<
             ")" << std::endl;
         return os;
     }
@@ -72,26 +103,40 @@ private:
     size_t _armour_class;
 };
 
+constexpr const Knight TRAINEE_KNIGHT = Knight(0, 0, 1);
+
 class Tournament {
 public:
-    Tournament(std::list<Knight> contestants);
-    Tournament(const Tournament&) = default;
+    Tournament(const std::vector<Knight>& contestants) : 
+        _contestants(contestants.empty() ? (std::vector<Knight>){TRAINEE_KNIGHT} : contestants), 
+        _eliminated((std::vector<Knight>){}) {};
+    
+    Tournament(const Tournament& other) : 
+        _contestants(other._contestants),
+        _eliminated () {};
     Tournament(Tournament&&) noexcept = default;
     Tournament& operator=(const Tournament&) = default;
     Tournament& operator=(Tournament&&) noexcept = default;
 
-    void operator+=(const Knight& knight);
-    void operator-=(const Knight& knight);
 
-    std::list<Knight>::const_iterator run();
-    std::list<Knight>::const_iterator end() const noexcept;
-    size_t size() const noexcept;
+    void operator-=(const Knight& knight) {
 
-    void print() const;
+    }
+
+    std::vector<Knight>::const_iterator play();
+    
+    void operator+=(const Knight& knight) { _contestants.push_back(knight); }
+    std::vector<Knight>::const_iterator no_winner() const noexcept{ return _contestants.end(); }
+
+    size_t size() const noexcept{ return _contestants.size(); }
+
+    friend std::ostream& operator<<(std::ostream& os, const Knight& Tournament) {
+        return os;
+    }
 
 private:
-    std::list<Knight> contestants_;
-    std::list<Knight> eliminated_;
+    std::vector<Knight> _contestants;
+    std::vector<Knight> _eliminated;
 };
 
 consteval std::pair<size_t, size_t> max_diff_classes(const std::initializer_list<Knight>& knights) {
