@@ -52,27 +52,3 @@ constexpr ord Knight::operator<=>(const Knight& other) const {
 constexpr bool Knight::operator==(const Knight& other) const {
     return (*this <=> other) == 0;
 }
-
-class Tournament {
-public:
-    Tournament(std::list<Knight> contestants);
-    Tournament(const Tournament&) = default;
-    Tournament(Tournament&&) noexcept = default;
-    Tournament& operator=(const Tournament&) = default;
-    Tournament& operator=(Tournament&&) noexcept = default;
-
-    void operator+=(const Knight& knight);
-    void operator-=(const Knight& knight);
-
-    std::list<Knight>::const_iterator run();
-    std::list<Knight>::const_iterator end() const noexcept;
-    size_t size() const noexcept;
-
-    void print() const;
-
-private:
-    std::list<Knight> contestants_;
-    std::list<Knight> eliminated_;
-};
-
-constexpr std::pair<size_t, size_t> max_diff_classes(const std::list<Knight>& knights);

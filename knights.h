@@ -85,6 +85,23 @@ private:
     std::list<Knight> eliminated_;
 };
 
-constexpr std::pair<size_t, size_t> max_diff_classes(const std::list<Knight>& knights);
+consteval std::pair<size_t, size_t> max_diff_classes(const std::initializer_list<Knight>& knights) {
+    size_t max_diff = 0;
+    std::pair<size_t, size_t> res = {0, 0};
+
+    for (const auto& knight : knights) {
+        size_t diff = // to avoid underflow
+            knight.get_weapon_class() >= knight.get_armour_class() ? 
+            knight.get_weapon_class() - knight.get_armour_class() : 
+            knight.get_armour_class() - knight.get_weapon_class();
+        
+        if (diff > max_diff) {
+            max_diff = diff;
+            res = {knight.get_weapon_class(), knight.get_armour_class()};
+        }
+    }
+
+    return res;
+}
 
 #endif // KNIGHTS_H
