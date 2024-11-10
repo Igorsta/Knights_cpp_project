@@ -5,67 +5,54 @@
 #include <list>
 #include <utility>
 #include <limits>
+#include <compare>
 
 class Knight {
 public:
     static constexpr size_t MAX_GOLD = std::numeric_limits<size_t>::max();
 
-    Knight(size_t gold, size_t weapon_class, size_t armor_class) : gold_(gold), weapon_class_(weapon_class), _armor_class(armor_class)  {};
-
+    Knight() = delete;
+    constexpr Knight(size_t gold, size_t weapon_class, size_t armour_class) : gold_(gold), weapon_class_(weapon_class), armour_class_(armour_class) {};
     Knight(const Knight&) = default;
     Knight(Knight&&) noexcept = default;
+    ~Knight() = default;
+
     Knight& operator=(const Knight&) = default;
     Knight& operator=(Knight&&) noexcept = default;
 
-    size_t getGold() const noexcept{
-        return gold_;
-    }
+    // accessors
+    constexpr size_t get_gold() const noexcept { return gold_; }
     
-    size_t getWeaponClass() const noexcept{
-        return weapon_class_;
-    }
+    constexpr size_t get_weapon_class() const noexcept { return weapon_class_; }
 
-    size_t getArmorClass() const noexcept{
-        return _armor_class;
-    }
-    
-    void addGold(size_t amount){
-        gold_ = std::min(gold_ + amount, MAX_GOLD);
-    };
+    constexpr size_t get_armour_class() const noexcept { return armour_class_; }
 
-    void removeAllGold(){
-        gold_ = 0;
+    // mutators
+    size_t take_gold(size_t g) 
+    {   
+        size_t prev = gold_;
+        gold_ = (g >= MAX_GOLD - gold_) ? MAX_GOLD : gold_ + g; 
+        return prev;
     }
+    size_t give_gold() { size_t prev = gold_; gold_ = 0; return prev; }
 
-    void changeWeapon(size_t new_class){
-        weapon_class_ = new_class;
-    }
-    
-    void removeWeapon(){
-        weapon_class_ = 0;
-    }
+    size_t change_weapon(size_t w) { size_t prev = weapon_class_; weapon_class_ = w; return prev; }
+    size_t give_up_weapon() { size_t prev = weapon_class_; weapon_class_ = 0; return prev; }
 
-    void changeArmor(size_t new_class){
-        _armor_class = new_class;
-    }
+    size_t change_armour(size_t a) { size_t prev = armour_class_; armour_class_ = a; return prev; } 
+    size_t take_off_armour() { size_t prev = armour_class_; armour_class_ = 0; return prev; }
 
-    void removeArmor(){
-        _armor_class = 0;
-    }
+    // operators
+    Knight& operator+=(Knight& other);
+    constexpr Knight operator+(const Knight& other) const;
+    constexpr std::strong_ordering operator<=>(const Knight& other) const;
+    constexpr bool operator==(const Knight& other) const;
 
-    Knight& operator+=(const Knight& other);
 
-    Knight operator+(const Knight& other) const{
-        return Knight(*this) += other; 
-    }
-    
-    auto operator<=>(const Knight&) const = default;
-    bool operator==(const Knight& other) const = default;
-
-    friend std::ostream& operator<<(std::ostream& os, const Knight& knight){
-        os << "(" << knight.getGold() <<
-            ", " << knight.getWeaponClass() <<
-            ", " << knight.getArmorClass() <<
+    friend std::ostream& operator<<(std::ostream& os, const Knight& knight) {
+        os << "(" << knight.get_gold() <<
+            ", " << knight.get_weapon_class() <<
+            ", " << knight.get_armour_class() <<
             ")" << std::endl;
         return os;
     }
@@ -73,7 +60,7 @@ public:
 private:
     size_t gold_;
     size_t weapon_class_;
-    size_t _armor_class;
+    size_t armour_class_;
 };
 
 class Tournament {

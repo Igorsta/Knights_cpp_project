@@ -1,74 +1,57 @@
-#include <bits/stdc++.h>
+#include "knights.h"
 
-class Knight {
-public:
-    static constexpr size_t MAX_GOLD = std::numeric_limits<size_t>::max();
+using ord = std::strong_ordering;
 
-    Knight(size_t gold, size_t weapon_class, size_t armor_class) : gold_(gold), weapon_class_(weapon_class), _armor_class(armor_class)  {};
+const size_t Knight::MAX_GOLD; // initialize static member
 
-    Knight(const Knight&) = default;
-    Knight(Knight&&) noexcept = default;
-    Knight& operator=(const Knight&) = default;
-    Knight& operator=(Knight&&) noexcept = default;
+Knight& Knight::operator+=(Knight& other) {
+    gold_ = (other.gold_ >= MAX_GOLD - gold_) ? MAX_GOLD : gold_ + other.gold_;
+    other.give_gold();
 
-    size_t getGold() const noexcept{
-        return gold_;
+    if (other.weapon_class_ > weapon_class_) {
+        weapon_class_ = other.weapon_class_;
+        other.give_up_weapon();
+    }
+
+    if (other.armour_class_ > armour_class_) {
+        armour_class_ = other.armour_class_;
+        other.take_off_armour();
+    }
+
+    return *this;
+}
+
+constexpr Knight Knight::operator+(const Knight& other) const {
+    return Knight(
+        (other.gold_ >= MAX_GOLD - gold_) ? MAX_GOLD : gold_ + other.gold_, 
+        std::max(weapon_class_, other.weapon_class_), 
+        std::max(armour_class_, other.armour_class_)
+    );
+}
+
+// can probably be simplified
+constexpr ord Knight::operator<=>(const Knight& other) const {
+    bool this_weapon_stronger = weapon_class_ > other.armour_class_;
+    bool other_weapon_stronger = other.weapon_class_ > armour_class_;
+
+    if (this_weapon_stronger && !other_weapon_stronger)
+        return ord::greater; 
+
+    if (!this_weapon_stronger && other_weapon_stronger)
+        return ord::less;
+
+    if (this_weapon_stronger && other_weapon_stronger) {
+        if (armour_class_ != other.armour_class_)
+            return armour_class_ <=> other.armour_class_;
+        return weapon_class_ <=> other.weapon_class_;
     }
     
-    size_t getWeaponClass() const noexcept{
-        return weapon_class_;
-    }
+    return ord::equal;
+}
 
-    size_t getArmorClass() const noexcept{
-        return _armor_class;
-    }
-    
-    void addGold(size_t amount){
-        gold_ = std::min(gold_ + amount, MAX_GOLD);
-    };
-
-    void removeAllGold(){
-        gold_ = 0;
-    }
-
-    void changeWeapon(size_t new_class){
-        weapon_class_ = new_class;
-    }
-    
-    void removeWeapon(){
-        weapon_class_ = 0;
-    }
-
-    void changeArmor(size_t new_class){
-        _armor_class = new_class;
-    }
-
-    void removeArmor(){
-        _armor_class = 0;
-    }
-
-    Knight& operator+=(const Knight& other);
-
-    Knight operator+(const Knight& other) const{
-        return Knight(*this) += other; 
-    }
-    
-    auto operator<=>(const Knight&) const = default;
-    bool operator==(const Knight& other) const = default;
-
-    friend std::ostream& operator<<(std::ostream& os, const Knight& knight){
-        os << "(" << knight.getGold() <<
-            ", " << knight.getWeaponClass() <<
-            ", " << knight.getArmorClass() <<
-            ")" << std::endl;
-        return os;
-    }
-
-private:
-    size_t gold_;
-    size_t weapon_class_;
-    size_t _armor_class;
-};
+constexpr bool Knight::operator==(const Knight& other) const {
+    return (*this <=> other) == 0;
+}
 
 class Tournament {
 public:
