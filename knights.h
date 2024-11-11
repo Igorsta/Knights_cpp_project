@@ -21,7 +21,7 @@ public:
     Knight& operator=(const Knight&) = default;
     Knight& operator=(Knight&&) noexcept = default;
 
-    inline constexpr size_t take_gold() noexcept { return set_to_0(_gold); }
+    inline constexpr size_t give_gold() noexcept { return set_to_0(_gold); }
     inline constexpr size_t give_up_weapon() noexcept { return set_to_0(_weapon_class); }
     inline constexpr size_t take_off_armour() noexcept { return set_to_0(_armour_class); }
     
@@ -50,7 +50,7 @@ public:
         );
     }
     
-    auto operator<=>(const Knight& other) const {\
+    constexpr auto operator<=>(const Knight& other) const {\
         bool this_beats_other = (_weapon_class > other._armour_class) && (_armour_class >= other._weapon_class);
         bool other_beats_this = (other._weapon_class > _armour_class) && (other._armour_class >= _weapon_class);
 
@@ -71,8 +71,9 @@ public:
     }
     
     constexpr bool operator==(const Knight& other) const {
-        return (_weapon_class <= other._armour_class && other._weapon_class <= _armour_class) ||
-                (_weapon_class == other._weapon_class && _armour_class == other._weapon_class);
+        // return (_weapon_class <= other._armour_class && other._weapon_class <= _armour_class) ||
+        //         (_weapon_class == other._weapon_class && _armour_class == other._weapon_class);
+        return (*this <=> other) == order::equal;
     };
 
     friend std::ostream& operator<<(std::ostream& os, const Knight& knight) {
@@ -104,7 +105,7 @@ private:
     size_t _armour_class;
 };
 
-constexpr Knight TRAINEE_KNIGHT = Knight(0, 0, 1);
+constinit Knight TRAINEE_KNIGHT = Knight(0, 1, 1);
 
 class Tournament {
 public:
@@ -155,14 +156,14 @@ public:
     void operator+=(const Knight& knight) { _contestants.push_back(knight); }
     std::list<Knight>::const_iterator no_winner() const noexcept{ return _contestants.end(); }
 
-    size_t size() const noexcept{ return _contestants.size(); }
+    size_t size() const noexcept{ return _contestants.size() + _eliminated.size(); }
 
     friend std::ostream& operator<<(std::ostream& os, const Tournament& t) {
         for (Knight k : t._contestants)
             os << "+ " << k << std::endl;
 
         for (Knight k : t._eliminated)
-            os << "+ " << k << std::endl;
+            os << "- " << k << std::endl;
 
         os << "=" << std::endl;
 
@@ -173,10 +174,10 @@ private:
     std::list<Knight> _contestants;
     std::list<Knight> _eliminated;
     
-    Knight&& get_front(){
+    Knight get_front() {
         Knight ans = _contestants.front();
         _contestants.pop_front();
-        return std::move(ans);
+        return ans; 
     }
 
     void reward(Knight& first, Knight& second, const order& res){
