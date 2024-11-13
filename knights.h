@@ -24,7 +24,7 @@ public:
     Knight& operator=(Knight&&) noexcept = default;
 
     //destructive accessors
-    inline constexpr size_t take_gold() noexcept { return reset(_gold); }
+    inline constexpr size_t give_gold() noexcept { return reset(_gold); }
     inline constexpr size_t give_up_weapon() noexcept { return reset(_weapon_class); }
     inline constexpr size_t take_off_armour() noexcept { return reset(_armour_class); }
 
@@ -56,7 +56,7 @@ public:
         );
     }
     
-    auto operator<=>(const Knight& other) const {
+    constexpr auto operator<=>(const Knight& other) const {
         bool this_beats_other = this->can_attack(other) && !other.can_attack(*this);
         bool other_beats_this = other.can_attack(*this) && !this->can_attack(other);
 
@@ -89,7 +89,7 @@ public:
         os << "(" << knight._gold <<
             ", " << knight._weapon_class <<
             ", " << knight._armour_class <<
-            ")" << std::endl;
+            ")";
         return os;
     }
 
@@ -142,10 +142,14 @@ public:
 
     //accessors
     std::list<Knight>::const_iterator no_winner() const noexcept{ return _contestants.end(); }
-    size_t size() const noexcept{ return _contestants.size(); }
+    size_t size() const noexcept{ return _contestants.size() + _eliminated.size(); }
     
     //operators
-    void operator+=(const Knight& knight) { _contestants.push_back(knight); }
+    void operator+=(const Knight& knight) { 
+        _contestants.push_back(knight);
+        _eliminated.clear();    
+    }
+
     void operator-=(const Knight& knight) {
         auto filter = [knight](const Knight& k) {
             return  k.get_gold() == knight.get_gold() &&
@@ -161,7 +165,7 @@ public:
 
     //methods
     std::list<Knight>::const_iterator play() {
-        while (_contestants.size() > 2) {
+        while (_contestants.size() >= 2) {
             Knight first = get_front();
             Knight second = get_front();
             
@@ -178,10 +182,10 @@ public:
     
     //output
     friend std::ostream& operator<<(std::ostream& os, const Tournament& t) {
-        for (Knight k : t._contestants)
+        for (const Knight& k : t._contestants)
             os << "+ " << k << std::endl;
 
-        for (Knight k : t._eliminated)
+        for (const Knight& k : t._eliminated)
             os << "- " << k << std::endl;
 
         os << "=" << std::endl;
