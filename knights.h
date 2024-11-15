@@ -2,6 +2,7 @@
 #define KNIGHTS_H
 
 #include <algorithm>
+#include <cassert>
 #include <iostream>
 #include <list>
 #include <limits>
@@ -57,26 +58,21 @@ public:
     }
     
     constexpr auto operator<=>(const Knight& other) const {
-        bool this_beats_other = this->can_attack(other) && !other.can_attack(*this);
-        bool other_beats_this = other.can_attack(*this) && !this->can_attack(other);
+        bool this_vulnerable   = other._weapon_class > _armour_class;
+        bool other_vulnerable  = _weapon_class > other._armour_class;
 
-        if (this_beats_other && !other_beats_this)
-            return order::greater;
-        
-        if (other_beats_this && !this_beats_other)
-            return order::less;
+        bool diff_vulnerablity = this_vulnerable ^ other_vulnerable;
 
-        if (!this->can_attack(other))
+        if (diff_vulnerablity)
+            return (other_vulnerable ? order::greater : order::less);
+
+        if (!this_vulnerable)
             return order::equal;
         
         if (_armour_class != other._armour_class)
-            return  _armour_class < other._armour_class ? 
-                    order::less :
-                    order::greater;
+            return  _armour_class <=> other._armour_class;
         
-        return  _weapon_class < other._weapon_class ? order::less :
-                _weapon_class > other._weapon_class ? order::greater :
-                order::equal;
+        return  _weapon_class <=> other._weapon_class;
     }
     
     constexpr bool operator==(const Knight& other) const {
@@ -95,6 +91,7 @@ public:
 
 private:
     constexpr inline size_t safe_add(const size_t a, const size_t b) const {
+        assert(a <= MAX_GOLD);
         return a + std::min(b, MAX_GOLD - a);
     }
 
@@ -107,10 +104,6 @@ private:
         size_t tmp = var;
         var = 0;
         return tmp;
-    }
-
-    constexpr inline bool can_attack(const Knight& other) const{
-        return (_weapon_class > other._armour_class);
     }
 
     size_t _gold;
