@@ -10,7 +10,7 @@
 
 class Knight {
 public:
-    using order = std::strong_ordering;
+    using order = std::weak_ordering;
     
     static constexpr size_t MAX_GOLD = std::numeric_limits<size_t>::max();
 
@@ -67,25 +67,25 @@ public:
             return (other_vulnerable ? order::greater : order::less);
 
         if (!this_vulnerable)
-            return order::equal;
+            return order::equivalent;
         
         if (_armour_class != other._armour_class)
-            return  _armour_class <=> other._armour_class;
+            return  std::weak_ordering(_armour_class <=> other._armour_class);
         
-        return  _weapon_class <=> other._weapon_class;
+        return  std::weak_ordering(_weapon_class <=> other._weapon_class);
     }
     
     constexpr bool operator==(const Knight& other) const {
-        return (*this <=> other) == order::equal;
+        return (*this <=> other) == order::equivalent;
     };
 
 
     //output
     friend std::ostream& operator<<(std::ostream& os, const Knight& knight) {
         os << "(" << knight._gold <<
-            ", " << knight._weapon_class <<
-            ", " << knight._armour_class <<
-            ")";
+            " gold, " << knight._weapon_class <<
+            " weapon class, " << knight._armour_class <<
+            " armour class)\n";
         return os;
     }
 
@@ -111,15 +111,15 @@ private:
     size_t _armour_class;
 };
 
-constinit Knight TRAINEE_KNIGHT = Knight(0, 1, 1);
+constinit const Knight TRAINEE_KNIGHT = Knight(0, 1, 1);
 
 class Tournament {
 public:
-    using order = std::strong_ordering;
+    using order = std::weak_ordering;
     
     //constructors
-    Tournament(const std::list<Knight>& contestants) : 
-        _contestants(contestants.empty() ? (std::list<Knight>){TRAINEE_KNIGHT} : contestants), 
+    Tournament(const std::initializer_list<Knight>& contestants) : 
+        _contestants(contestants.size() ? contestants : std::list<Knight>({TRAINEE_KNIGHT})), 
         _eliminated((std::list<Knight>){}) {};
     
     Tournament(const Tournament& other) : 
@@ -138,12 +138,15 @@ public:
     size_t size() const noexcept{ return _contestants.size() + _eliminated.size(); }
     
     //operators
-    void operator+=(const Knight& knight) { 
+    Tournament& operator+=(const Knight& knight) { 
         _contestants.push_back(knight);
-        _eliminated.clear();    
+        _eliminated.clear();
+        return *this;
     }
 
-    void operator-=(const Knight& knight) {
+    Tournament& operator-=(const Knight& knight) {
+        _eliminated.clear();
+
         auto filter = [knight](const Knight& k) {
             return  k.get_gold() == knight.get_gold() &&
                     k.get_armour_class() == knight.get_armour_class() &&
@@ -154,10 +157,13 @@ public:
             std::remove_if(_contestants.begin(), _contestants.end(), filter),
             _contestants.end()
         );
+        return *this;
     }
 
     //methods
     std::list<Knight>::const_iterator play() {
+        _eliminated.clear();
+
         while (_contestants.size() >= 2) {
             Knight first = get_front();
             Knight second = get_front();
@@ -176,10 +182,10 @@ public:
     //output
     friend std::ostream& operator<<(std::ostream& os, const Tournament& t) {
         for (const Knight& k : t._contestants)
-            os << "+ " << k << std::endl;
+            os << "+ " << k;
 
         for (const Knight& k : t._eliminated)
-            os << "- " << k << std::endl;
+            os << "- " << k;
 
         os << "=" << std::endl;
 
@@ -205,7 +211,7 @@ private:
         if (verdict == desired)
             _contestants.push_back(knight);
         else
-            _eliminated.push_back(knight);
+            _eliminated.push_front(knight);
     }
 
     std::list<Knight> _contestants;
